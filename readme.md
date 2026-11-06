@@ -66,7 +66,7 @@ cd note-service
 ./gradlew bootRun    # or ./mvnw bootRun
 ```
 Once the application starts successfully, open your browser and navigate to:
-http://localhost:8080/index.html
+* http://localhost:8080/index.html
 ---
 
 
