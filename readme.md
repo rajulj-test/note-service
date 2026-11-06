@@ -28,7 +28,7 @@ Scouring note text across the entire database to surface relevant results instan
 
 ### 6. Team Name Search (`searchbyteamname.png`)
 Querying team names globally to connect readers with peer workspaces.
-![Search by Team Name](searchbyteamname.png)
+![Search by Team Name](images/searchbyteamname.png)
 
 ---
 
@@ -66,6 +66,8 @@ cd note-service
 ./gradlew bootRun    or  ./mvnw bootRun
 Once the application starts successfully, open your browser and navigate to:
 http://localhost:8080/index.html
+---
+
 
 ## Endpoint summary
 | Endpoint | Method | Access | Description |
