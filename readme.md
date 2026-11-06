@@ -54,17 +54,16 @@ Querying team names globally to connect readers with peer workspaces.
   
 ## 🚀 Running Locally
 
-
 ### 1. Prerequisites
 You only need **Java** installed locally. The application connects directly to your cloud-hosted **Neon PostgreSQL** database over SSL.
-* **Java Development Kit (JDK) 17+**
-* **Git**
+- **Java Development Kit (JDK) 17+**
+- **Git**
 
 ### 2. Clone the Repository, bootrun and access from localhost
-```bash
-git clone [https://github.com/rajulj-test/note-service.git](https://github.com/rajulj-test/note-service.git)
+
+git clone https://github.com/rajulj-test/note-service.git
 cd note-service
-./gradlew bootRun    or  ./mvnw bootRun
+./gradlew bootRun    # or ./mvnw bootRun
 Once the application starts successfully, open your browser and navigate to:
 http://localhost:8080/index.html
 ---
