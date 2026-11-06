@@ -47,7 +47,7 @@ Querying team names globally to connect readers with peer workspaces.
 * **Backend**: Java, Spring Boot, Spring Data JPA, Hibernate
 * **Database**: Neon PostgreSQL (Serverless Cloud)
 * **Frontend**: Vanilla JavaScript, HTML5, CSS3 (Single Page App served via Spring Boot)
-* **Build Tool**: Gradle / Maven
+* **Build Tool**: Gradle 
 
 ---
 
