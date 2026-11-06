@@ -25,15 +25,14 @@ A responsive, multi-user note-taking platform built with **Spring Boot 3** and *
 * **Build Tool**: Apache Maven
 
 ---
-
 ## 🚀 Running Locally
 
 ### 1. Prerequisites
 
-Ensure you have the following installed on your machine:
+You only need **Java** installed locally. The application connects directly to a cloud-hosted **Neon PostgreSQL** database over SSL.
+
 * **Java Development Kit (JDK) 17** or higher
 * **Git**
-* A **Neon PostgreSQL** database instance (or local PostgreSQL)
 
 ---
 
