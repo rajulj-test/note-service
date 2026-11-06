@@ -51,13 +51,14 @@ Querying team names globally to connect readers with peer workspaces.
 
 ---
 
+  
+## 🚀 Running Locally
+
 
 ### 1. Prerequisites
 You only need **Java** installed locally. The application connects directly to your cloud-hosted **Neon PostgreSQL** database over SSL.
 * **Java Development Kit (JDK) 17+**
 * **Git**
-  
-## 🚀 Running Locally
 
 ### 2. Clone the Repository, bootrun and access from localhost
 ```bash
