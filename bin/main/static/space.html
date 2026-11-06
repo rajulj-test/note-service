@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Team Workspace</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 20px; }
+        input, textarea, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+        textarea { height: 100px; }
+        button { background: #28a745; color: white; border: none; cursor: pointer; }
+        .note-card { background: #f8f9fa; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
+        .search-bar { background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; margin-bottom: 20px; }
+        .read-only-banner { background: #d1ecf1; color: #0c5460; padding: 10px; margin-bottom: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <h1 id="workspaceTitle">Team Workspace</h1>
+    <div id="readOnlyBanner" class="read-only-banner">Viewing in Read-Only Mode (Shared Link)</div>
+    
+    <div class="search-bar">
+        <h3>Search Notes</h3>
+        <input type="text" id="searchInput" placeholder="Search by title or text..." onkeyup="loadNotes()">
+    </div>
+
+    <div id="creatorSection">
+        <h3>Create New Note</h3>
+        <input type="text" id="noteTitle" placeholder="Note Title">
+        <textarea id="noteContent" placeholder="Write your note content here..."></textarea>
+        <button onclick="saveNote()">Save Note</button>
+        <hr>
+    </div>
+
+    <h3>Notes</h3>
+    <div id="notesContainer">Loading notes...</div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const shareToken = urlParams.get('shareToken');
+
+        if (!token && !shareToken) {
+            alert('Missing workspace parameters!');
+            window.location.href = '/index.html';
+        }
+
+        async function loadNotes() {
+            const searchQuery = document.getElementById('searchInput').value;
+            let queryParam = token ? `token=${token}` : `shareToken=${shareToken}`;
+            
+            const res = await fetch(`/api/notes?${queryParam}&search=${encodeURIComponent(searchQuery)}`);
+            if (!res.ok) {
+                alert('Unauthorized or invalid session.');
+                window.location.href = '/index.html';
+                return;
+            }
+            const data = await res.json();
+            
+            document.getElementById('workspaceTitle').innerText = `${data.name}'s Workspace (${data.teamName})`;
+
+            if (!data.isOwner) {
+                document.getElementById('creatorSection').style.display = 'none';
+                document.getElementById('readOnlyBanner').style.display = 'block';
+            }
+
+            const container = document.getElementById('notesContainer');
+            container.innerHTML = '';
+            
+            if (data.notes.length === 0) {
+                container.innerHTML = '<p>No notes found.</p>';
+                return;
+            }
+
+            data.notes.forEach(note => {
+                const card = document.createElement('div');
+                card.className = 'note-card';
+                card.innerHTML = `
+                    <h4>${escapeHtml(note.title)}</h4>
+                    <p>${escapeHtml(note.content)}</p>
+                    <small>Created: ${new Date(note.createdAt).toLocaleString()}</small>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function saveNote() {
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+
+            if (!title) {
+                alert('Title is required');
+                return;
+            }
+
+            await fetch(`/api/notes?token=${token}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content })
+            });
+
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+            loadNotes();
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        loadNotes();
+    </script>
+</body>
+</html>

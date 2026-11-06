@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Team Note-Taking Service</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; background: #f4f6f8; }
+        header { text-align: center; margin-bottom: 30px; }
+        .dashboard-container { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
+        
+        /* Left Column: Workspace & Notes */
+        .workspace-panel { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .note-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; margin-bottom: 12px; border-radius: 6px; }
+        .search-bar { background: #fffbeb; border: 1px solid #fef3c7; padding: 12px; margin-bottom: 20px; border-radius: 6px; }
+        
+        /* Right Column: Feed & Registration Sidebar */
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+        .sidebar-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .feed-item { padding: 10px; margin: 8px 0; border-bottom: 1px solid #f0f2f5; display: flex; justify-content: space-between; align-items: center; }
+        .feed-item a { text-decoration: none; color: #2563eb; font-weight: bold; font-size: 14px; }
+        
+        input, textarea, button { width: 100%; padding: 10px; margin: 6px 0; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 4px; }
+        textarea { height: 90px; }
+        button { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1d4ed8; }
+        .read-only-banner { background: #e0f2fe; color: #0369a1; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: none; font-size: 14px; }
+        .logout-btn { background: #ef4444; margin-top: 10px; }
+        .logout-btn:hover { background: #dc2626; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="appTitle">Team Note-Taking Hub</h1>
+        <p>Collaborate privately or explore public team workspaces in real time.</p>
+    </header>
+
+    <div class="dashboard-container">
+        
+        <!-- LEFT COLUMN: Workspace Notes & Creation -->
+        <div class="workspace-panel">
+            <h2 id="workspaceTitle">Loading Workspace...</h2>
+            <div id="readOnlyBanner" class="read-only-banner">Viewing in Read-Only Mode (Shared Link)</div>
+            
+            <div class="search-bar">
+                <h4>Search Notes</h4>
+                <input type="text" id="searchInput" placeholder="Search by title or text..." onkeyup="loadNotes()">
+            </div>
+
+            <div id="creatorSection" style="display:none;">
+                <h3>Create New Note</h3>
+                <input type="text" id="noteTitle" placeholder="Note Title">
+                <textarea id="noteContent" placeholder="Write your note content here..."></textarea>
+                <button onclick="saveNote()">Save Note</button>
+                <hr style="margin: 20px 0; border:0; border-top:1px solid #e5e7eb;">
+            </div>
+
+            <h3>Notes Feed</h3>
+            <div id="notesContainer">Select a workspace or register to start taking notes.</div>
+        </div>
+
+        <!-- RIGHT COLUMN: Public Feed & Registration Sidebar -->
+        <div class="sidebar">
+            
+            <!-- Dynamic Account Box / Registration -->
+            <div class="sidebar-card" id="accountCard">
+                <h3 id="accountCardTitle">Create Your Workspace</h3>
+                <form id="regForm">
+                    <input type="text" id="name" placeholder="Your Name" required>
+                    <input type="email" id="email" placeholder="Email Address" required>
+                    <input type="text" id="teamName" placeholder="Team Name" required>
+                    <button type="submit">Launch Workspace</button>
+                </form>
+                <div id="ownerControls" style="display:none;">
+                    <p style="font-size: 13px; color: #4b5563;">You are logged in as the owner of this workspace.</p>
+                    <button class="logout-btn" onclick="logout()">Switch Account / Logout</button>
+                </div>
+            </div>
+
+            <!-- Public Feed Directory -->
+            <div class="sidebar-card">
+                <h3>Live Team Feeds</h3>
+                <div id="workspaceFeed">Loading public feeds...</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let activeToken = urlParams.get('token') || localStorage.getItem('note_app_token');
+        let activeShareToken = urlParams.get('shareToken');
+
+        // If no token exists anywhere, default to public feed or first workspace if available, 
+        // but let's keep it friendly for visitors.
+        async function init() {
+            if (activeToken) {
+                document.getElementById('ownerControls').style.display = 'block';
+                document.getElementById('regForm').style.display = 'none';
+                document.getElementById('accountCardTitle').innerText = 'Your Account';
+            }
+            await loadNotes();
+            await loadPublicFeed();
+        }
+
+        async function loadNotes() {
+            const searchQuery = document.getElementById('searchInput').value.trim();
+            const container = document.getElementById('notesContainer');
+
+            // IF THE USER IS TYPING A SEARCH QUERY: Always run a Global Database Search!
+            if (searchQuery.length > 0) {
+                document.getElementById('workspaceTitle').innerText = `Global Search Results for "${searchQuery}"`;
+                document.getElementById('readOnlyBanner').style.display = 'none';
+                document.getElementById('creatorSection').style.display = 'none';
+
+                try {
+                    const res = await fetch(`/api/notes/search?keyword=${encodeURIComponent(searchQuery)}`);
+                    const matches = await res.json();
+                    container.innerHTML = '';
+
+                    if (matches.length === 0) {
+                        container.innerHTML = `<p>No matches found across the database for "${escapeHtml(searchQuery)}".</p>`;
+                        return;
+                    }
+
+                    matches.forEach(match => {
+                        const card = document.createElement('div');
+                        card.className = 'note-card';
+                        card.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                                <strong style="color:#1f2937; font-size:15px;">${escapeHtml(match.title)}</strong>
+                                <a href="/index.html?shareToken=${match.shareToken}" style="font-size:12px; background:#e0f2fe; color:#0369a1; padding:4px 8px; border-radius:4px; text-decoration:none;">Visit ${escapeHtml(match.teamName)} &rarr;</a>
+                            </div>
+                            <p style="margin:0 0 8px 0; color:#4b5563; white-space: pre-wrap;">${escapeHtml(match.content)}</p>
+                            <small style="color:#9ca3af;">Author: ${escapeHtml(match.ownerName)} (${escapeHtml(match.teamName)}) | Created: ${new Date(match.createdAt).toLocaleString()}</small>
+                        `;
+                        container.appendChild(card);
+                    });
+                } catch (err) {
+                    console.error(err);
+                }
+                return;
+            }
+
+            // OTHERWISE (Search is empty): Load normal workspace view if a token is present
+            if (!activeToken && !activeShareToken) {
+                document.getElementById('workspaceTitle').innerText = 'Welcome Visitor';
+                container.innerHTML = '<p>Type in the search bar above to search across all notes in the database, or select a team from the right sidebar feed.</p>';
+                return;
+            }
+
+            let queryParam = activeToken ? `token=${activeToken}` : `shareToken=${activeShareToken}`;
+            const res = await fetch(`/api/notes?${queryParam}`);
+            
+            if (!res.ok) {
+                alert('Invalid session or unauthorized.');
+                logout();
+                return;
+            }
+
+            const data = await res.json();
+            document.getElementById('workspaceTitle').innerText = `${data.name}'s Workspace (${data.teamName})`;
+
+            if (data.isOwner) {
+                document.getElementById('creatorSection').style.display = 'block';
+            } else {
+                document.getElementById('readOnlyBanner').style.display = 'block';
+            }
+
+            container.innerHTML = '';
+
+            if (data.notes.length === 0) {
+                container.innerHTML = '<p>No notes found in this workspace yet.</p>';
+                return;
+            }
+
+            data.notes.forEach(note => {
+                const card = document.createElement('div');
+                card.className = 'note-card';
+                card.innerHTML = `
+                    <h4 style="margin:0 0 8px 0; color:#1f2937;">${escapeHtml(note.title)}</h4>
+                    <p style="margin:0 0 8px 0; color:#4b5563; white-space: pre-wrap;">${escapeHtml(note.content)}</p>
+                    <small style="color:#9ca3af;">Created: ${new Date(note.createdAt).toLocaleString()}</small>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        async function saveNote() {
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+
+            if (!title) {
+                alert('Title is required');
+                return;
+            }
+
+            await fetch(`/api/notes?token=${activeToken}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content })
+            });
+
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+            loadNotes();
+        }
+
+        async function loadPublicFeed() {
+            try {
+                const res = await fetch('/api/workspaces');
+                const workspaces = await res.json();
+                const feed = document.getElementById('workspaceFeed');
+
+                if (workspaces.length === 0) {
+                    feed.innerHTML = '<p style="font-size:13px; color:#6b7280;">No public teams yet.</p>';
+                    return;
+                }
+
+                feed.innerHTML = '';
+                workspaces.forEach(ws => {
+                    const item = document.createElement('div');
+                    item.className = 'feed-item';
+                    item.innerHTML = `
+                        <div>
+                            <strong style="font-size:13px; color:#374151;">${ws.teamName}</strong><br>
+                            <small style="color:#6b7280;">by ${ws.name}</small>
+                        </div>
+                        <a href="/index.html?shareToken=${ws.shareToken}">View &rarr;</a>
+                    `;
+                    feed.appendChild(item);
+                });
+            } catch (err) {
+                document.getElementById('workspaceFeed').innerHTML = '<p style="font-size:13px; color:red;">Failed to load feed.</p>';
+            }
+        }
+
+        document.getElementById('regForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                teamName: document.getElementById('teamName').value
+            };
+
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const user = await response.json();
+            if (user.token && user.shareToken) {
+                // Save token to localStorage for future automatic logins
+                localStorage.setItem('note_app_token', user.token);
+
+                const ownerUrl = window.location.origin + `/index.html?token=${user.token}`;
+                const shareUrl = window.location.origin + `/index.html?shareToken=${user.shareToken}`;
+
+                // Swap the registration form out to show the generated links clearly
+                const accountCard = document.getElementById('accountCard');
+                accountCard.innerHTML = `
+                    <h3 style="color: #16a34a;">Workspace Created!</h3>
+                    <p style="font-size: 13px; color: #4b5563;">Save your private owner link somewhere safe. It grants full write access.</p>
+                    
+                    <div style="margin: 10px 0; font-size: 12px;">
+                        <strong>Owner Link (Secret - Keep Safe):</strong><br>
+                        <input type="text" value="${ownerUrl}" readonly onclick="this.select()" style="font-size:11px; background:#f9fafb; cursor:pointer;" title="Click to select">
+                    </div>
+
+                    <div style="margin: 10px 0; font-size: 12px;">
+                        <strong>Public Share Link (For Team):</strong><br>
+                        <input type="text" value="${shareUrl}" readonly onclick="this.select()" style="font-size:11px; background:#f9fafb; cursor:pointer;" title="Click to select">
+                    </div>
+
+                    <button onclick="window.location.href='/index.html?token=${user.token}'" style="background:#16a34a; margin-top: 10px;">Enter My Workspace &rarr;</button>
+                `;
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('note_app_token');
+            window.location.href = '/index.html';
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        init();
+    </script>
+</body>
+</html>
