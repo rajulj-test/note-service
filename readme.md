@@ -51,14 +51,27 @@ Querying team names globally to connect readers with peer workspaces.
 
 ---
 
-## 🚀 Running Locally
 
 ### 1. Prerequisites
 You only need **Java** installed locally. The application connects directly to your cloud-hosted **Neon PostgreSQL** database over SSL.
 * **Java Development Kit (JDK) 17+**
 * **Git**
+  
+## 🚀 Running Locally
 
-### 2. Clone the Repository
+### 2. Clone the Repository, bootrun and access from localhost
 ```bash
 git clone [https://github.com/rajulj-test/note-service.git](https://github.com/rajulj-test/note-service.git)
 cd note-service
+./gradlew bootRun    or  ./mvnw bootRun
+Once the application starts successfully, open your browser and navigate to:
+http://localhost:8080/index.html
+
+## Endpoint summary
+| Endpoint | Method | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `/api/register` | `POST` | Public | Registers a new workspace owner and generates tokens. |
+| `/api/workspaces` | `GET` | Public | Returns a list of all registered team workspaces. |
+| `/api/notes` | `GET` | Token / ShareToken | Fetches notes for a specific workspace. |
+| `/api/notes` | `POST` | Owner Token Only | Saves a new note to the owner's workspace. |
+| `/api/notes/search` | `GET` | Public | Scans the entire database for matching keywords. |
